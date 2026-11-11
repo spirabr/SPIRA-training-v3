@@ -5,9 +5,7 @@ from src.spira_training.shared.adapters.pytorch.model_trainer.interfaces.pytorch
 )
 from typing_extensions import Self
 
-from src.spira_training.shared.adapters.pytorch.model_trainer.interfaces.pytorch_model import (
-    PytorchModel,
-)
+from src.spira_training.shared.core.models.trainable_model import TrainableModel
 from src.spira_training.shared.core.models.loss import Loss
 from src.spira_training.shared.core.models.step import Step
 from src.spira_training.shared.core.models.valid_path import ValidPath
@@ -23,7 +21,7 @@ class FilesystemCheckpoint:
 
     @classmethod
     def create_initial_checkpoint(
-        cls, model: PytorchModel, optimizer: PytorchOptimizer
+        cls, model: TrainableModel, optimizer: PytorchOptimizer
     ) -> Self:
         return cast(
             Self,
@@ -37,7 +35,7 @@ class FilesystemCheckpoint:
         checkpoint_state = torch.load(checkpoint_path, map_location="cpu")
         return cast(Self, FilesystemCheckpoint(checkpoint_state))
 
-    def restore(self, model: PytorchModel, optimizer: PytorchOptimizer) -> Step:
+    def restore(self, model: TrainableModel, optimizer: PytorchOptimizer) -> Step:
         model.load_state(self.model_state)
         optimizer.load_state(self.optimizer_state)
         return self.step
@@ -45,7 +43,7 @@ class FilesystemCheckpoint:
     @classmethod
     def create(
         cls,
-        model: PytorchModel,
+        model: TrainableModel,
         optimizer: PytorchOptimizer,
         validation_loss: Loss,
         step: Step,
@@ -53,7 +51,7 @@ class FilesystemCheckpoint:
         checkpoint_state = {
             "model": model.dump_state(),
             "optimizer": optimizer.dump_state(),
-            "validation_loss": validation_loss,
+            "validation_loss": validation_loss.value,
             "step": step,
         }
         return cast(Self, FilesystemCheckpoint(checkpoint_state))
@@ -62,7 +60,7 @@ class FilesystemCheckpoint:
         checkpoint_state = {
             "model": self.model_state,
             "optimizer": self.optimizer_state,
-            "validation_loss": self.validation_loss.item(),
+            "validation_loss": self.validation_loss,
             "step": self.step,
         }
         torch.save(checkpoint_state, checkpoint_path)

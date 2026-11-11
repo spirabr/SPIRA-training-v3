@@ -11,17 +11,17 @@ from src.spira_training.shared.adapters.pytorch.models.pytorch_label import (
     PytorchLabel,
 )
 
-from src.spira_training.shared.adapters.pytorch.model_trainer.interfaces.pytorch_model import (
-    PytorchModel,
-)
-
+from src.spira_training.shared.core.models.trainable_model import TrainableModel
 
 import torch
 
 
-class SimplePytorchModel(PytorchModel):
+class SimplePytorchModel(TrainableModel):
     def __init__(self, model: InnerTorchModel):
         self._inner_model = model
+
+    def train(self):
+        self._inner_model.train()
 
     def dump_state(self) -> dict:
         return self._inner_model.state_dict()
@@ -33,7 +33,11 @@ class SimplePytorchModel(PytorchModel):
         return self._inner_model(feature)
 
     def predict_batch(self, features_batch: list[PytorchTensor]) -> list[PytorchLabel]:
-        return self._inner_model(torch.tensor(features_batch))
+        features = torch.stack(list(features_batch))
+        if features.ndim == 3:
+            features = features.transpose(1, 2)
+        predictions = self._inner_model(features)
+        return predictions.mean(dim=1).squeeze(-1)
 
     def get_parameters(self) -> list[PytorchParameter]:
         return [

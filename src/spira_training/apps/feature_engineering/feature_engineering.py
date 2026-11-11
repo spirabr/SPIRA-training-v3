@@ -1,43 +1,64 @@
 import asyncio
 from pathlib import Path
 
-from src.spira_training.shared.adapters.json_config_loader import JsonConfigLoader
+from src.spira_training.apps.feature_engineering.configs.feature_engineering_config import (
+    FeatureEngineeringConfig,
+)
+from src.spira_training.shared.adapters.audios_repository import AudiosRepository
+from src.spira_training.shared.adapters.csv_audio_manifest_reader import (
+    CSVAudioManifestReader,
+)
+from src.spira_training.shared.adapters.filesystem_path_validator import FilesystemPathValidator
+from src.spira_training.shared.adapters.pytorch_dataset_repository import (
+    PytorchDatasetRepository,
+)
+from src.spira_training.shared.adapters.pytorch.model_trainer.implementations.simple_pytorch_audio_factory import (
+    SimplePytorchTensorFactory,
+)
+from src.spira_training.shared.core.audio_processor_factory import (
+    create_pytorch_audio_processor,
+)
 from src.spira_training.shared.core.services.feature_engineering_service import (
     FeatureEngineeringService,
 )
-from src.spira_training.shared.core.services.randomizer import Randomizer
-from tests.unit.fakes.fake_dataset_repository import FakeDatasetRepository
-from tests.unit.fakes.fake_audios_repository import FakeAudiosRepository
-from tests.unit.fakes.fake_path_validator import FakePathValidator
-from tests.unit.fakes.fake_file_reader import FakeFileReader
-from tests.unit.fakes.fake_pytorch_audio_factory import FakePytorchTensorFactory
+from src.spira_training.shared.ports.path_validator import PathValidator
+
+
+def make_config(
+    config_path: str | Path | None = None,
+    path_validator: PathValidator = FilesystemPathValidator(),
+) -> FeatureEngineeringConfig:
+    if config_path is None:
+        config_path = Path(__file__).resolve().parents[4] / "config.json"
+
+    config_path = path_validator.validate_path(Path(config_path)).path
+
+    from src.spira_training.shared.adapters.json_config_loader import JsonConfigLoader
+
+    return JsonConfigLoader(path_validator).load(config_path).feature_engineering_config
 
 
 async def main():
-    config = JsonConfigLoader().load_feature_engineering_config("path/to/config")
+    path_validator = FilesystemPathValidator()
+    config = make_config(path_validator=path_validator)
 
-    # TODO - Instantiate the real dependencies
-    randomizer = Randomizer(seed=42).initialize_random(seed=42)
-    dataset_repository = FakeDatasetRepository()
-    audios_repository = FakeAudiosRepository()
-    file_reader = FakeFileReader()
-    path_validator = FakePathValidator()
-    pytorch_audio_factory = FakePytorchTensorFactory()
+    dataset_repository = PytorchDatasetRepository(config.dataset_path, path_validator)
+    audios_repository = AudiosRepository(path_validator=path_validator)
+    manifest_reader = CSVAudioManifestReader(config.audio.dataset_paths.metadata_csv, path_validator)
 
-    service = FeatureEngineeringService(
-        config=config,
-        randomizer=randomizer,
-        dataset_repository=dataset_repository,
-        audios_repository=audios_repository,
-        file_reader=file_reader,
-        path_validator=path_validator,
-        pytorch_audio_factory=pytorch_audio_factory,
+    pytorch_audio_factory = SimplePytorchTensorFactory()
+    audio_processor = create_pytorch_audio_processor(
+        config.audio_processor, pytorch_audio_factory
     )
 
-    # TODO - Get the bucket name to save the dataset
-    save_dataset_path = Path("any_model_storage_path")
+    service = FeatureEngineeringService(
+        dataset_repository=dataset_repository,
+        audios_repository=audios_repository,
+        manifest_reader=manifest_reader,
+        audio_processor=audio_processor,
+    )
 
-    await service.execute(save_dataset_path=save_dataset_path)
+    await service.execute()
 
 
 if __name__ == "__main__":

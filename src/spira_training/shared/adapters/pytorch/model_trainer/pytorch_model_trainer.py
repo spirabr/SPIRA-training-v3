@@ -1,20 +1,18 @@
 from typing import Sequence
 
-from src.spira_training.shared.adapters.pytorch.model_trainer.interfaces.pytorch_model import (
-    PytorchModel,
-)
-
 from src.spira_training.shared.adapters.pytorch.models.pytorch_batch import (
     PytorchBatch,
 )
 
 
+from src.spira_training.shared.core.models.trainable_model import TrainableModel
 from src.spira_training.shared.core.models.event import TestLossEvent, TrainLossEvent
 
 from src.spira_training.shared.ports.train_logger import TrainLogger
 
 
 from src.spira_training.shared.core.models.dataset import Dataset
+from src.spira_training.shared.core.models.step import Step
 
 from .interfaces.pytorch_dataloader_factory import PytorchDataloaderFactory
 from .interfaces.pytorch_optimizer import PytorchOptimizer
@@ -23,16 +21,12 @@ from .interfaces.pytorch_scheduler import PytorchScheduler
 from .interfaces.pytorch_checkpoint_manager import Checkpoint, PytorchCheckpointManager
 
 from src.spira_training.shared.ports.model_trainer import ModelTrainer
-from src.spira_training.shared.core.models.trained_model import TrainedModel
-
-
-BaseModel = PytorchModel
 
 
 class PytorchModelTrainer(ModelTrainer):
     def __init__(
         self,
-        base_model: BaseModel,
+        base_model: TrainableModel,
         optimizer: PytorchOptimizer,
         train_dataloader_factory: PytorchDataloaderFactory,
         test_dataloader_factory: PytorchDataloaderFactory,
@@ -54,7 +48,7 @@ class PytorchModelTrainer(ModelTrainer):
 
     def train_model(
         self, train_dataset: Dataset, test_dataset: Dataset, epochs: int
-    ) -> TrainedModel:
+    ) -> TrainableModel:
         train_dataloader = self._train_dataloader_factory.make_dataloader(
             dataset=train_dataset
         )
@@ -113,6 +107,6 @@ class PytorchModelTrainer(ModelTrainer):
         self._checkpoint_manager.update_and_save_checkpoint(
             checkpoint=Checkpoint(
                 loss=loss,
-                step=step,
+                step=Step(step),
             )
         )

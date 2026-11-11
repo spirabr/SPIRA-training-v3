@@ -1,7 +1,7 @@
 from typing import Sequence
 from spira_training.shared.adapters.pytorch.models.pytorch_label import PytorchLabel
 from spira_training.shared.adapters.pytorch.models.pytorch_tensor import PytorchTensor
-from spira_training.shared.core.models.loss import Loss
+from src.spira_training.shared.core.models.loss import Loss
 import torch
 from src.spira_training.shared.adapters.pytorch.model_trainer.implementations.pytorch_loss_calculator.single_loss_calculator import (
     SingleLossCalculator,
@@ -32,7 +32,7 @@ class AverageMultipleLossCalculator(PytorchLossCalculator):
             for prediction, label in zip(predictions, labels)
         ]
         loss_tensor = sum(losses) / len(losses)
-        return Loss(value=loss_tensor.tolist())
+        return Loss(value=float(torch.as_tensor(loss_tensor).item()))
 
     def recalculate_weights(self):
         self.single_loss_calculator.recalculate_weights()
@@ -143,4 +143,4 @@ class BalancedAverageMultipleLossCalculator(PytorchLossCalculator):
             sum(average_loss_by_label.values()) / len(average_loss_by_label)
         )
 
-        return Loss(value=loss_tensor.tolist())
+        return Loss(value=float(loss_tensor.item()))

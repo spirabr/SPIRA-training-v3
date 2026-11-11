@@ -1,13 +1,12 @@
 from abc import ABC, abstractmethod
-from pathlib import Path
-from src.spira_training.shared.core.models.trained_model import TrainedModel
+from src.spira_training.shared.core.models.trainable_model import TrainableModel
 
 
 class TrainedModelsRepository(ABC):
     @abstractmethod
-    async def get_model(self, path: Path) -> TrainedModel:
+    async def get_model(self) -> TrainableModel:
         pass
 
     @abstractmethod
-    async def save_model(self, model: TrainedModel, path: Path) -> None:
+    async def save_model(self, model: TrainableModel) -> None:
         pass

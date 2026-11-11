@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 from typing import Optional
 
 from spira_training.shared.adapters.pytorch.model_trainer.implementations.pytorch_checkpoint_manager.filesystem_checkpoint import (
@@ -9,9 +10,7 @@ from src.spira_training.shared.adapters.pytorch.model_trainer.interfaces.pytorch
 )
 
 from src.spira_training.shared.ports.path_validator import PathValidator
-from src.spira_training.shared.adapters.pytorch.model_trainer.interfaces.pytorch_model import (
-    PytorchModel,
-)
+from src.spira_training.shared.core.models.trainable_model import TrainableModel
 from src.spira_training.shared.core.models.loss import Loss
 from src.spira_training.shared.core.models.step import Step
 from src.spira_training.shared.core.models.valid_path import ValidPath
@@ -33,7 +32,7 @@ class FileSystemCheckpointBuilder:
 
     def create_checkpoint(
         self,
-        model: PytorchModel,
+        model: TrainableModel,
         optimizer: PytorchOptimizer,
         loss: Loss,
         step: Step,
@@ -45,18 +44,20 @@ class FileSystemCheckpointBuilder:
         )
 
     def save_checkpoint_with_step(self, checkpoint: FilesystemCheckpoint):
-        checkpoint_path = self.fs_path_validator.validate_path(
+        checkpoint_path = Path(
             os.path.join(self.checkpoint_dir, f"checkpoint_{checkpoint.step}.pt")
         )
-        checkpoint.save(checkpoint_path)
+        checkpoint.save(ValidPath(path=checkpoint_path))
+        self.fs_path_validator.validate_path(checkpoint_path)
 
     def save_checkpoint_with_prefix(
         self, checkpoint: FilesystemCheckpoint, prefix: str
     ):
-        checkpoint_path = self.fs_path_validator.validate_path(
+        checkpoint_path = Path(
             os.path.join(self.checkpoint_dir, f"{prefix}_checkpoint.pt")
         )
-        checkpoint.save(checkpoint_path)
+        checkpoint.save(ValidPath(path=checkpoint_path))
+        self.fs_path_validator.validate_path(checkpoint_path)
 
     def _should_checkpoint(self, step: Step) -> bool:
         return int(step) % self.checkpoint_interval == 0
